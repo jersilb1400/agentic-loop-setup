@@ -1,0 +1,13 @@
+# Progress — [Project / Workstream]
+
+## Next up
+- [ ] [Exact next step, specific enough for a fresh session to start cold]
+
+## In progress
+- [ ] [Item] — [state, blockers]
+
+## Done (with evidence)
+- [x] [Item] — check passed: [date / output reference]
+
+## Failed approaches (do not retry without new information)
+- [Approach] — failed because [why]. Lesson: [what to do instead]

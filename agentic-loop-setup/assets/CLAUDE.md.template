@@ -1,0 +1,31 @@
+# [Project Name]
+
+## Commands
+- Build: [command]
+- Test (the verification check): [command]
+- Lint: [command]
+
+## Architecture & conventions
+- [Only rules that differ from defaults or can't be inferred from code]
+- [Known gotchas]
+
+## Loop contract
+- After any change, run: [verification command]. Show the output — evidence,
+  not assertions. Work is not done until the check passes.
+- If corrected twice on the same issue: stop, record the lesson below, and
+  recommend a fresh session with a better prompt.
+- Investigation and bulk file reading go to subagents; keep this session's
+  context for the plan and decisions.
+- Resumability: keep PROGRESS.md current enough that a fresh session could
+  resume from it alone. If you hit a usage/token limit, that is NOT "done" —
+  leave PROGRESS.md mid-task with the exact next step so the auto-resume runner
+  can continue after the limit resets. Print "[DONE_MARKER]" only when every
+  item is complete and the check passes.
+
+## End-of-session learning pass
+Before finishing any session: (1) append repeatable lessons below as short
+imperative rules; (2) delete rules proven unnecessary; (3) update PROGRESS.md
+with completed items, failed approaches and why, and the exact next step.
+
+## Lessons learned
+- [Claude appends here — keep each entry one line, imperative]

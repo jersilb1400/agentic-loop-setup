@@ -1,0 +1,104 @@
+# Loop Operating Instructions — [Project]
+
+## Pattern
+[Chosen pattern + one-line why, e.g. "Single explore→plan→implement→verify
+loop; adversarial review before commit. Chosen because scope is known and the
+main risk is missed edge cases."]
+
+## The check (verification)
+- Command: [exact command]
+- Passing looks like: [what output indicates pass]
+- Gate level: [prompt-only | /goal | Stop hook | + adversarial subagent]
+
+## Session start prompt
+```
+Read CLAUDE.md, LOOP.md, PROGRESS.md. Pick up the next item in PROGRESS.md.
+1. CONTEXT: delegate any non-trivial investigation to the `explorer` subagent;
+   work from its digest, don't read the whole tree yourself.
+2. PLAN: propose a plan, then send it to the `plan-critic` subagent. Apply its
+   PROCEED-WITH-CHANGES items; if it says RECONSIDER, revise before coding.
+   (Autonomous mode: act on the critic instead of waiting for a human.)
+3. IMPLEMENT: make the change, then have the `verifier` subagent run [check].
+4. REVIEW: send the diff to the `reviewer` subagent. Fix every correctness issue
+   it returns; loop 3–4 until verifier PASS and reviewer says LGTM.
+5. Update PROGRESS.md and run the learning pass. Print ALL ITEMS COMPLETE only
+   when every item is done and the check passes.
+```
+
+## Stop condition
+[When is the loop done? e.g. "All PROGRESS.md items checked off and the full
+suite passes" — never "when it seems finished".]
+
+## Model routing
+- [Role]: [model + one-line why, e.g. "Fan-out items: claude-haiku-4-5 —
+  mechanical transform, score 9/50"]
+- Escalation: on validation failure or hidden complexity, retry once on the
+  next tier up and announce it; two failures → flag for human review.
+
+## Budget
+- Max iterations per item: [N]; token budget: [N]; on budget exhaustion:
+  record state in PROGRESS.md and stop cleanly.
+- Projected cost: [items × avg tokens/item × tier rate — calibrate during
+  the pilot run, then project before the full run].
+
+## Unattended exhaustion recovery (usage-limit auto-resume)
+When this loop runs unattended, a usage/rate-limit hit must not end the run —
+it must pause and continue once the window resets.
+
+- Runner: `scripts/auto_resume.sh` (Claude Code). It detects the limit message,
+  parses the reset time (or falls back to the ~5h window + margin), sleeps, then
+  relaunches a session that reads PROGRESS.md and continues. Cap: [MAX_RESUMES]
+  reset cycles.
+- Cowork (no headless): a scheduled task fires after the reset window and
+  re-runs the session prompt above against PROGRESS.md.
+- Contract that makes resume safe — the loop MUST, every session:
+  1. Keep PROGRESS.md current enough that a cold session can resume from it alone.
+  2. Print the exact done marker `[DONE_MARKER]` only when fully complete, so the
+     runner knows to stop instead of relaunching.
+  3. Never treat "out of tokens" as "done".
+
+## Subagents & Permissions
+
+The adversarial reviewer and the permissions file are standard outputs — every
+loop setup should include them.
+
+Each subagent runs in a **fresh, scoped context**. Together they replace the
+human plan-approval and merge-approval gates so the loop runs unattended, and
+no agent both produces work and judges it.
+
+### Plan critic (`.claude/agents/plan-critic.md`) — model: [tier]
+Runs **after the plan, before any code**. Returns unstated assumptions,
+dismissed alternatives, edge cases, and a verdict (PROCEED / PROCEED WITH
+CHANGES / RECONSIDER). This is the gate that lets the loop start work without a
+human approving the plan, and the mechanism that forces all angles to be weighed.
+Invoke at: [when — e.g. "before implementing any item scored ≥15/50" or "every item"]
+
+### Adversarial reviewer (`.claude/agents/reviewer.md`) — model: [tier]
+Runs in a fresh context **after implementation**, so it cannot defend code it
+never saw being written. Looks for correctness problems — broken API calls,
+missing error states, hardcoded values, security gaps, UX dead-ends — not
+approach (that's the plan-critic) and not style. Output: numbered list, or
+"LGTM — no issues found."
+Invoke at: [when — e.g. "after each PROGRESS.md item" or "before any UI change merges"]
+
+### Explorer (`.claude/agents/explorer.md`) — model: [tier, usually Fast]
+Read-only scout. Answers one focused investigation question and returns a compact
+`path:line` digest, protecting the driver's context on long runs. No edit/write.
+Invoke at: [when — e.g. "any time locating code or tracing behavior would cost >2 file reads"]
+
+### Verifier (`.claude/agents/verifier.md`) — model: [tier, usually Fast]
+Runs the verification check and reports PASS or a triaged FAIL list. Never fixes —
+that separation keeps the pass/fail signal honest.
+Invoke at: [after each change, as the gate before review]
+
+### Permissions (`.claude/settings.json`)
+The `allow` list grants autonomous access to safe, reversible operations:
+reading files, running verify scripts, grep, find, build commands.
+The `deny` list hard-blocks destructive or irreversible operations regardless
+of context: `rm`, `git push`, deploy commands, outbound network (`curl`, `wget`).
+
+When the loop needs a new operation, add it to `allow` explicitly — don't
+widen the allow-list preemptively. When unsure, default to `deny`.
+
+## Escalation
+[What the loop should do when blocked: who to ask, what to record.]
