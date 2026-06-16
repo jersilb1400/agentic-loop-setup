@@ -52,7 +52,7 @@ Claude Code does not yet auto-resume after a subscription usage-limit reset (ope
 
 **Or clone and copy the folder directly:**
 ```bash
-git clone https://github.com/<owner>/agentic-loop-setup.git
+git clone https://github.com/jersilb1400/agentic-loop-setup.git
 cp -r agentic-loop-setup/agentic-loop-setup ~/.claude/skills/
 ```
 
@@ -63,7 +63,7 @@ agentic-loop-setup/        the skill itself
   SKILL.md                 the wizard
   references/              patterns, mechanisms, model-routing, prompts
   assets/                  file + subagent templates
-GraceFM_Agentic_Loop_Playbook.pdf   the branded playbook this skill was distilled from
+Agentic_Loop_Playbook.pdf            the playbook this skill was distilled from
 README.md
 ```
 
